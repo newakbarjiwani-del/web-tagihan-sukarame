@@ -13,6 +13,7 @@
     'text' => $c['text'],
     'textDark' => $c['dark_text'],
     'theme' => $c['theme'],
+    'highlight' => $c['highlight'],
     'logo' => asset($brand['logo']),
     'icon192' => asset($brand['icon_192']),
     'pwa' => (bool) ($brand['pwa']['enabled'] ?? true),
@@ -41,29 +42,27 @@
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap">
 <style>
 :root{
-  --brand-primary:{{ $c['primary'] ?: '#0B7EB8' }};
-  --brand-primary-h:{{ $c['primary_hover'] ?: '#086693' }};
-  --brand-primary-soft:{{ $c['primary_soft'] ?: '#D6EEF8' }};
-  --brand-theme:{{ $c['theme'] ?: '#0B7EB8' }};
-  --brand-highlight:{{ !empty($c['highlight']) ? $c['highlight'] : '#E89B0C' }};
-  --brand-highlight-soft:{{ !empty($c['highlight_soft']) ? $c['highlight_soft'] : '#FFF3D1' }};
-  --brand-logo-cyan:#3AB4F2;
-  --bg:#e4e9ee;
-  --bg-deep:#d5dde5;
-  --surface:#ffffff;
-  --surface2:#eef2f6;
-  --border:#b7c4d0;
-  --border2:#8fa3b5;
-  --text:#0a1f2e;
-  --text2:#334b5c;
-  --text3:#5a7386;
-  --accent:var(--brand-primary, #0B7EB8);
-  --accent-h:var(--brand-primary-h, #086693);
-  --accent-soft:var(--brand-primary-soft, #D6EEF8);
-  --highlight:#E89B0C;
-  --highlight:var(--brand-highlight, #E89B0C);
-  --highlight-soft:#FFF3D1;
-  --highlight-soft:var(--brand-highlight-soft, #FFF3D1);
+  --brand-primary:{{ $c['primary'] }};
+  --brand-primary-h:{{ $c['primary_hover'] }};
+  --brand-primary-soft:{{ $c['primary_soft'] }};
+  --brand-theme:{{ $c['theme'] }};
+  --brand-highlight:{{ $c['highlight'] }};
+  --brand-highlight-soft:{{ $c['highlight_soft'] }};
+  --bg:{{ $c['bg'] }};
+  --bg-deep:{{ $c['bg_deep'] }};
+  --surface:{{ $c['surface'] }};
+  --surface2:{{ $c['surface2'] }};
+  --border:{{ $c['border'] }};
+  --border2:{{ $c['border2'] }};
+  --text:{{ $c['text'] }};
+  --text2:{{ $c['text2'] }};
+  --text3:{{ $c['text3'] }};
+  --accent:{{ $c['primary'] }};
+  --accent-h:{{ $c['primary_hover'] }};
+  --accent-soft:{{ $c['primary_soft'] }};
+  --highlight:{{ $c['highlight'] }};
+  --highlight-soft:{{ $c['highlight_soft'] }};
+  --on-accent:{{ $c['on_accent'] }};
   --danger:#b71c1c;
   --radius:{{ $r }}px;
   --radius-sm:{{ $radiusSm }}px;
@@ -71,35 +70,36 @@
   --font-display:'Plus Jakarta Sans', system-ui, sans-serif;
   --shadow:0 1px 2px rgba(10,31,46,.05), 0 6px 16px rgba(10,31,46,.06);
   --shadow-sm:0 1px 2px rgba(10,31,46,.05);
-  --table-head:#dceaf3;
-  --table-head-text:#0a4f73;
-  --btn-face:#ffffff;
+  --table-head:{{ $c['table_head'] }};
+  --table-head-text:{{ $c['table_head_text'] }};
+  --btn-face:{{ $c['surface'] }};
   color-scheme:light;
 }
 html,body,button,input,select,textarea,table,th,td,.btn,.tbl-title,.brand-name,.brand-tagline,.aside-card,.sf,.modal,.bill-card{
   font-family:var(--font) !important;
 }
 html.dark{
-  --bg:#0a1620;
-  --bg-deep:#071018;
+  --bg:{{ $c['dark_bg'] }};
+  --bg-deep:{{ $c['dark_bg_deep'] }};
   --surface:{{ $c['dark_surface'] }};
-  --surface2:#1a2e3d;
-  --border:#2a4558;
-  --border2:#3d6078;
+  --surface2:{{ $c['dark_surface2'] }};
+  --border:{{ $c['dark_border'] }};
+  --border2:{{ $c['dark_border2'] }};
   --text:{{ $c['dark_text'] }};
-  --text2:#b8d0de;
-  --text3:#8aabbc;
+  --text2:{{ $c['dark_text2'] }};
+  --text3:{{ $c['dark_text3'] }};
   --accent:{{ $c['dark_primary'] }};
   --accent-h:{{ $c['dark_primary_hover'] }};
   --accent-soft:{{ $c['dark_primary_soft'] }};
-  --highlight:#F9A825;
-  --highlight-soft:#3a2f14;
+  --highlight:{{ $c['dark_highlight'] }};
+  --highlight-soft:{{ $c['dark_highlight_soft'] }};
+  --on-accent:{{ $c['dark_on_accent'] }};
   --danger:#ef5350;
   --shadow:0 1px 2px rgba(0,0,0,.2), 0 10px 28px rgba(0,0,0,.28);
   --shadow-sm:0 1px 2px rgba(0,0,0,.25);
-  --table-head:#143044;
-  --table-head-text:#d5ebf5;
-  --btn-face:#1a2e3d;
+  --table-head:{{ $c['dark_table_head'] }};
+  --table-head-text:{{ $c['dark_table_head_text'] }};
+  --btn-face:{{ $c['dark_surface2'] }};
   color-scheme:dark;
 }
 </style>

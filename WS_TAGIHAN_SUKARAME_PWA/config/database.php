@@ -3,9 +3,9 @@ class Database {
     private $pdo;
 
     public function __construct() {
-        $host = "103.23.103.36";
+        $host = "10.99.23.26";
         $port = "3306";
-        $dbname = "demo_smartpayment_installment"; 
+        $dbname = "lampung_mit_muh_sukarame"; 
         $username = "root";
         $password = "Smartpay1ct";
 

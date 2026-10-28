@@ -21,13 +21,28 @@ class TagihanController extends Controller
         return $url;
     }
 
+    /** Prefix 6 digit VA yang ditampilkan dan disalin di data siswa. */
+    public static function vaPrefix(): string
+    {
+        $prefix = preg_replace('/\D+/', '', (string) config('services.va.prefix', '751000'));
+
+        return strlen($prefix) === 6 ? $prefix : '751000';
+    }
+
     public static function normalizeVa(?string $va): string
     {
         $va = preg_replace('/\s+/', '', (string) $va);
         // Buang pemisah umum: 797766-1234567801 → 7977661234567801
         $va = preg_replace('/[-_.\/]/', '', $va);
 
-        if (preg_match('/^(751000|757777|797766)(\d+)$/', $va, $m)) {
+        $prefixes = array_unique(array_filter([
+            self::vaPrefix(),
+            '751000',
+            '757777',
+            '797766',
+        ]));
+        $pattern = '/^('.implode('|', array_map(static fn ($p) => preg_quote($p, '/'), $prefixes)).')(\d+)$/';
+        if (preg_match($pattern, $va, $m)) {
             $va = $m[2];
         }
 
@@ -44,7 +59,7 @@ class TagihanController extends Controller
             return '-';
         }
 
-        return '751000'.self::padVaSuffix($n);
+        return self::vaPrefix().self::padVaSuffix($n);
     }
 
     /** Bank/inquiry VA: nomor setelah prefix harus 10 digit (kurang → 0 di depan). */
@@ -492,9 +507,14 @@ class TagihanController extends Controller
             $vaOk = $va !== false && $va !== null && $va !== '' && $va !== 'false';
 
             if (!empty($result['status']) && $vaOk) {
+                $generated = (string) $va;
+                $prefix = self::vaPrefix();
+                if ($prefix !== '' && !str_starts_with($generated, $prefix)) {
+                    $generated = $prefix.$generated;
+                }
                 $result['data'] = array_merge(
                     is_array($result['data'] ?? null) ? $result['data'] : [],
-                    ['va_number' => $nocust]
+                    ['va_number' => $generated]
                 );
 
                 return response()->json($result);

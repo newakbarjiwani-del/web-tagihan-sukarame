@@ -76,7 +76,7 @@ function notify(message, type) {
   var bg = {
     success: dark ? (b.primaryDark || '#4DB8E8') : (b.primary || '#0B7EB8'),
     error: '#c62828',
-    warning: '#E89B0C',
+    warning: b.highlight || '#E89B0C',
     info: dark ? (b.surfaceDark || '#15202a') : '#0a1f2e'
   };
   var color = (type === 'success' && dark) ? '#0a1a28' : '#fff';
@@ -238,6 +238,9 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
           </div>
         </div>
 
+        @php
+          $novaDisplay = \App\Http\Controllers\TagihanController::formatNova($result['data']['no_cust'] ?? $result['data']['num2nd'] ?? '');
+        @endphp
         <div class="profile-hero">
           <div class="profile-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($result['data']['nama'] ?? 'S', 0, 1)) }}</div>
           <div class="profile-main">
@@ -252,6 +255,13 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
               <span class="profile-nis-inline">NIS {{ $result['data']['no_cust'] ?? $result['data']['num2nd'] ?? '-' }}</span>
             </p>
           </div>
+          <div class="profile-va">
+            <span>Nomor VA</span>
+            <div class="profile-va-row">
+              <strong id="siswaVaText">{{ $novaDisplay !== '-' ? $novaDisplay : '-' }}</strong>
+              <button type="button" class="btn-copy-mini" onclick="copyTextEl('siswaVaText')" {{ $novaDisplay !== '-' ? '' : 'disabled' }} aria-label="Salin nomor VA">Salin</button>
+            </div>
+          </div>
           <div class="profile-saldo">
             <span>Saldo</span>
             <strong id="saldoVaText">Rp {{ number_format($result['data']['saldo'] ?? 0, 0, ',', '.') }}</strong>
@@ -261,8 +271,7 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
         @php
           $canPayBills = (bool) config('brand.payment_can_pay_bills');
           $qrisOn = (bool) config('brand.payment_qris');
-          $novaDisplay = $result['data']['va_number'] ?? \App\Http\Controllers\TagihanController::formatNova($result['data']['no_cust'] ?? $result['data']['num2nd'] ?? '');
-          $showTopupHub = !$canPayBills || $qrisOn;
+          $showTopupHub = false;
         @endphp
 
         @if($showTopupHub)
@@ -355,7 +364,6 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
                 <th>Dibayar</th>
                 <th>Cicil</th>
                 <th class="sticky-r">Bayar</th>
-                <th>Exp Date</th>
               </tr>
             </thead>
             <tbody id="tagihanTableBody">
@@ -365,10 +373,6 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
                 $sudahBayar = (int)($tagih['sudah_dibayar'] ?? 0);
                 $totalTagih = (int)($tagih['total_tagihan'] ?? 0);
                 $sisaTagih = (int)($tagih['sisa_tagihan'] ?? max(0, $totalTagih - $sudahBayar));
-                $expRaw = $tagih['ExpDate'] ?? $tagih['expdate'] ?? null;
-                $expLabel = (!empty($expRaw) && !str_starts_with((string) $expRaw, '0000-00-00'))
-                  ? \Carbon\Carbon::parse($expRaw)->format('Y-m-d')
-                  : '-';
               @endphp
               <tr data-index="{{ $i }}">
                 <td class="sticky-l sticky-l0">
@@ -390,10 +394,9 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
                 <td class="sticky-r">
                   <input type="number" class="pay-input bayar-input" data-index="{{ $i }}" min="1" max="{{ $sisaTagih }}" value="0" disabled inputmode="numeric" aria-label="Nominal bayar">
                 </td>
-                <td>{{ $expLabel }}</td>
               </tr>
               @empty
-              <tr><td colspan="10" class="empty-note">Tidak ada tagihan aktif</td></tr>
+              <tr><td colspan="9" class="empty-note">Tidak ada tagihan aktif</td></tr>
               @endforelse
             </tbody>
           </table>
@@ -410,10 +413,6 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
             $sudahBayar = (int)($tagih['sudah_dibayar'] ?? 0);
             $totalTagih = (int)($tagih['total_tagihan'] ?? 0);
             $sisaTagih = (int)($tagih['sisa_tagihan'] ?? max(0, $totalTagih - $sudahBayar));
-            $expRaw = $tagih['ExpDate'] ?? $tagih['expdate'] ?? null;
-            $expLabel = (!empty($expRaw) && !str_starts_with((string) $expRaw, '0000-00-00'))
-              ? \Carbon\Carbon::parse($expRaw)->format('d M Y')
-              : '-';
             $namaTagihan = ucwords(str_replace('_', ' ', strtolower($tagih['nama_tagihan'] ?? '-')));
           @endphp
           <article class="bill-card {{ $canPayBills ? '' : 'bill-card-info' }}" data-index="{{ $i }}">
@@ -436,7 +435,6 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
             </div>
             <div class="bill-facts">
               <div class="bill-fact"><span>Periode</span><b>{{ $tagih['periode'] ?: '-' }}</b></div>
-              <div class="bill-fact"><span>Exp</span><b>{{ $expLabel }}</b></div>
               <div class="bill-fact"><span>Sisa</span><b>Rp {{ number_format($sisaTagih, 0, ',', '.') }}</b></div>
               <div class="bill-fact"><span>Dibayar</span><b>Rp {{ number_format($sudahBayar, 0, ',', '.') }}</b></div>
             </div>
@@ -607,7 +605,6 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
       <div class="modal-row" id="mTahunRow" hidden><span class="modal-row-lbl">Tahun akademik</span><span class="modal-row-val" id="mTahun"></span></div>
       <div class="modal-row"><span class="modal-row-lbl">Periode</span><span class="modal-row-val" id="mPeriode"></span></div>
       <div class="modal-row"><span class="modal-row-lbl">Tgl bayar</span><span class="modal-row-val" id="mPaidDt"></span></div>
-      <div class="modal-row"><span class="modal-row-lbl">Exp Date</span><span class="modal-row-val" id="mExpDate"></span></div>
       <div id="mDetailTable"></div>
     </div>
     <div class="modal-foot">
@@ -973,16 +970,6 @@ function formatExpDate(value) {
   return y + '-' + m + '-' + day;
 }
 
-function expDateOf(item) {
-  return item?.ExpDate || item?.exp_date || item?.expdate || null;
-}
-
-function earliestExpDate(items) {
-  const dates = (items || []).map(expDateOf).filter(v => v && String(v).indexOf('0000-00-00') !== 0);
-  if (!dates.length) return null;
-  return dates.slice().sort()[0];
-}
-
 function showLunasDetail(index) {
   const tahunRow = document.getElementById('mTahunRow');
   if (tahunRow) tahunRow.hidden = true;
@@ -996,8 +983,6 @@ function showDetailModal(tagihan) {
   if (periodeEl) periodeEl.textContent = tagihan.periode || '-';
   const paidEl = document.getElementById('mPaidDt');
   if (paidEl) paidEl.textContent = formatExpDate(tagihan.PAIDDT || tagihan.paiddt || null);
-  const expEl = document.getElementById('mExpDate');
-  if (expEl) expEl.textContent = formatExpDate(expDateOf(tagihan));
   let details = Array.isArray(tagihan.detail) ? tagihan.detail.slice() : [];
   if (!details.length && (tagihan.PAIDDT || tagihan.PAIDST === '1' || tagihan.paidst === '1')) {
     details = [{
@@ -1700,13 +1685,25 @@ function formatRp(n) {
   return 'Rp\u00a0' + (parseInt(n, 10) || 0).toLocaleString('id-ID');
 }
 
+const vaBankPrefix = @json(\App\Http\Controllers\TagihanController::vaPrefix());
+
+function withVaPrefix(va) {
+  const n = String(va ?? '').replace(/\s+/g, '');
+  if (!n || n === '-') return '';
+  if (vaBankPrefix && n.indexOf(vaBankPrefix) === 0) return n;
+  return (vaBankPrefix || '') + n;
+}
+
 function formatNovaDisplay(va) {
   let n = String(va ?? '').replace(/\s+/g, '');
   if (!n || n === '-') return '-';
-  n = n.replace(/^(751000|757777|797766)/, '');
+  const prefixes = [vaBankPrefix, '751000', '757777', '797766'].filter(Boolean);
+  prefixes.forEach(prefix => {
+    if (n.indexOf(prefix) === 0) n = n.slice(prefix.length);
+  });
   n = n.replace(/^0+/, '') || n;
   if (/^\d+$/.test(n)) n = n.padStart(10, '0');
-  return n ? ('751000' + n) : '-';
+  return n ? (vaBankPrefix + n) : '-';
 }
 
 function esc(s) {
@@ -1880,7 +1877,6 @@ function showPaymentModal() {
   }
 
   const total = selected.reduce((s, i) => s + (parseInt(i.bayar, 10) || 0), 0);
-  const minExp = earliestExpDate(selected);
   let rows = '';
   selected.forEach(i => {
     const cicil = isCicil(i);
@@ -1903,17 +1899,6 @@ function showPaymentModal() {
       <div><span class="pi-lbl">Nama</span><div class="pi-val">${esc(siswaBayar.nama) || '-'}</div></div>
       <div><span class="pi-lbl">Kelas</span><div class="pi-val">${esc(siswaBayar.kelas) || '-'}</div></div>
       <div><span class="pi-lbl">NIS</span><div class="pi-val">${esc(siswaBayar.no_cust || siswaBayar.num2nd) || '-'}</div></div>
-      <div>
-        <span class="pi-lbl">Nomor VA</span>
-        <div class="pi-val pi-val-va">
-          <span id="payInfoVaText">${esc(formatNovaDisplay(siswaBayar.va_number || siswaBayar.no_cust)) || '-'}</span>
-          <button type="button" class="btn-copy-mini" onclick="copyTextEl('payInfoVaText')" title="Salin VA" aria-label="Salin VA">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            Salin
-          </button>
-        </div>
-      </div>
-      <div><span class="pi-lbl">Exp Date VA</span><div class="pi-val">${esc(formatExpDate(minExp))}</div></div>
     </div>
     <div class="pay-tbl-wrap">
       <table class="pay-tbl">
@@ -2027,7 +2012,7 @@ async function prosesGenerateVa(payload, total, nocust, btn) {
     const data = await res.json();
     const rawVa = data?.data?.va_number ?? data?.va_number;
     const vaOk = rawVa !== false && rawVa !== null && rawVa !== undefined && String(rawVa) !== 'false' && String(rawVa).trim() !== '';
-    const va = (data?.status && vaOk) ? formatNovaDisplay(nocust || rawVa) : '';
+    const va = (data?.status && vaOk) ? withVaPrefix(rawVa) : '';
 
     if (data?.status && va && va !== '-') {
       document.getElementById('vaResult').innerHTML = `
@@ -2039,7 +2024,7 @@ async function prosesGenerateVa(payload, total, nocust, btn) {
           Salin nomor VA
         </button>
           <p class="va-meta">Total: <b>${formatRp(total)}</b></p>
-        <p class="va-help">Bayar ke nomor VA di atas (kode bank 751000). Kami akan memberi notifikasi saat pembayaran berhasil.</p>
+        <p class="va-help">Bayar ke nomor VA di atas. Kami akan memberi notifikasi saat pembayaran berhasil.</p>
         </div>`;
     const methodBox = document.getElementById('payMethodBox');
     if (methodBox) methodBox.style.display = 'none';
@@ -2622,54 +2607,54 @@ syncInstallModalState();
       <svg class="login-cartoon__svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
         {{-- floating coins (kuning logo) --}}
         <g class="lc-coin lc-coin--1">
-          <circle cx="32" cy="48" r="14" fill="#F9A825"/>
-          <circle cx="32" cy="48" r="10" fill="#FFC94A"/>
-          <text x="32" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="#B86E00">Rp</text>
+          <circle cx="32" cy="48" r="14" fill="var(--highlight)"/>
+          <circle cx="32" cy="48" r="10" fill="var(--highlight)"/>
+          <text x="32" y="53" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">Rp</text>
         </g>
         <g class="lc-coin lc-coin--2">
-          <circle cx="168" cy="40" r="11" fill="#F9A825"/>
-          <circle cx="168" cy="40" r="7.5" fill="#FFC94A"/>
-          <text x="168" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#B86E00">Rp</text>
+          <circle cx="168" cy="40" r="11" fill="var(--highlight)"/>
+          <circle cx="168" cy="40" r="7.5" fill="var(--highlight)"/>
+          <text x="168" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">Rp</text>
         </g>
         {{-- waving bill paper --}}
         <g class="lc-bill">
-          <rect x="138" y="78" width="36" height="46" rx="4" fill="#E8F7FE" stroke="#3AB4F2" stroke-width="2"/>
-          <line x1="146" y1="90" x2="166" y2="90" stroke="#3AB4F2" stroke-width="2" stroke-linecap="round" opacity=".55"/>
-          <line x1="146" y1="100" x2="162" y2="100" stroke="#3AB4F2" stroke-width="2" stroke-linecap="round" opacity=".4"/>
-          <line x1="146" y1="110" x2="158" y2="110" stroke="#3AB4F2" stroke-width="2" stroke-linecap="round" opacity=".3"/>
-          <rect x="156" y="82" width="8" height="8" rx="1.5" fill="#F9A825"/>
+          <rect x="138" y="78" width="36" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="146" y1="90" x2="166" y2="90" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+          <line x1="146" y1="100" x2="162" y2="100" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" opacity=".4"/>
+          <line x1="146" y1="110" x2="158" y2="110" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+          <rect x="156" y="82" width="8" height="8" rx="1.5" fill="var(--highlight)"/>
         </g>
         {{-- mascot body (biru logo) --}}
         <g class="lc-mascot">
           <ellipse class="lc-shadow" cx="100" cy="138" rx="38" ry="8" fill="rgba(58,180,242,.22)"/>
-          <g class="lc-leg lc-leg--l"><ellipse cx="84" cy="128" rx="9" ry="6" fill="#1A7BB8"/></g>
-          <g class="lc-leg lc-leg--r"><ellipse cx="116" cy="128" rx="9" ry="6" fill="#1A7BB8"/></g>
-          <ellipse cx="100" cy="98" rx="42" ry="38" fill="#3AB4F2"/>
-          <ellipse cx="100" cy="102" rx="34" ry="28" fill="#5FC4F5"/>
+          <g class="lc-leg lc-leg--l"><ellipse cx="84" cy="128" rx="9" ry="6" fill="var(--accent-h)"/></g>
+          <g class="lc-leg lc-leg--r"><ellipse cx="116" cy="128" rx="9" ry="6" fill="var(--accent-h)"/></g>
+          <ellipse cx="100" cy="98" rx="42" ry="38" fill="var(--accent)"/>
+          <ellipse cx="100" cy="102" rx="34" ry="28" fill="var(--accent)"/>
           {{-- aksen kotak kuning seperti titik i logo --}}
-          <rect class="lc-badge" x="92" y="58" width="16" height="16" rx="3" fill="#F9A825"/>
-          <ellipse cx="100" cy="92" rx="28" ry="22" fill="#E8F7FE"/>
+          <rect class="lc-badge" x="92" y="58" width="16" height="16" rx="3" fill="var(--highlight)"/>
+          <ellipse cx="100" cy="92" rx="28" ry="22" fill="var(--accent-soft)"/>
           <g class="lc-eyes">
-            <ellipse class="lc-eye" cx="90" cy="90" rx="5.5" ry="6.5" fill="#0D3A55"/>
-            <ellipse class="lc-eye" cx="110" cy="90" rx="5.5" ry="6.5" fill="#0D3A55"/>
+            <ellipse class="lc-eye" cx="90" cy="90" rx="5.5" ry="6.5" fill="var(--text)"/>
+            <ellipse class="lc-eye" cx="110" cy="90" rx="5.5" ry="6.5" fill="var(--text)"/>
             <circle cx="92" cy="88" r="1.8" fill="#fff"/>
             <circle cx="112" cy="88" r="1.8" fill="#fff"/>
           </g>
-          <ellipse cx="78" cy="100" rx="5" ry="3" fill="#F9A825" opacity=".45"/>
-          <ellipse cx="122" cy="100" rx="5" ry="3" fill="#F9A825" opacity=".45"/>
-          <path d="M90 106 Q100 116 110 106" fill="none" stroke="#1A7BB8" stroke-width="2.5" stroke-linecap="round"/>
+          <ellipse cx="78" cy="100" rx="5" ry="3" fill="var(--highlight)" opacity=".45"/>
+          <ellipse cx="122" cy="100" rx="5" ry="3" fill="var(--highlight)" opacity=".45"/>
+          <path d="M90 106 Q100 116 110 106" fill="none" stroke="var(--accent-h)" stroke-width="2.5" stroke-linecap="round"/>
           <g class="lc-arm lc-arm--l">
-            <ellipse cx="58" cy="100" rx="8" ry="12" fill="#3AB4F2" transform="rotate(-25 58 100)"/>
+            <ellipse cx="58" cy="100" rx="8" ry="12" fill="var(--accent)" transform="rotate(-25 58 100)"/>
           </g>
           <g class="lc-arm lc-arm--r">
-            <ellipse cx="142" cy="100" rx="8" ry="12" fill="#3AB4F2" transform="rotate(25 142 100)"/>
+            <ellipse cx="142" cy="100" rx="8" ry="12" fill="var(--accent)" transform="rotate(25 142 100)"/>
           </g>
         </g>
         {{-- sparkles kuning --}}
-        <g class="lc-spark lc-spark--1" fill="#F9A825">
+        <g class="lc-spark lc-spark--1" fill="var(--highlight)">
           <path d="M54 70 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z"/>
         </g>
-        <g class="lc-spark lc-spark--2" fill="#F9A825">
+        <g class="lc-spark lc-spark--2" fill="var(--highlight)">
           <path d="M150 58 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5 z"/>
         </g>
       </svg>

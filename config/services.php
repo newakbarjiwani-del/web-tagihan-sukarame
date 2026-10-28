@@ -41,6 +41,11 @@ return [
         'url' => env('WS_TAGIHAN_URL', 'http://103.23.103.43/WEB_TAGIHAN_PROJECT/WS_TAGIHAN_SIDOARJO_RAUDHATUL_JANNAH/index.php'),
     ],
 
+    // 6 digit di depan VA yang disalin siswa (prefix + NIS 10 digit)
+    'va' => [
+        'prefix' => env('VA_PREFIX', '751000'),
+    ],
+
     // DB sekolah untuk simpan pwa_qris / pwa_qris_item (sama dengan DEMO_WS database.php)
     'tagihan_db' => [
         'host' => env('TAGIHAN_DB_HOST', '103.23.103.36'),

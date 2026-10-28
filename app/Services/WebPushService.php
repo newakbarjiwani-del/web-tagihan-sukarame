@@ -85,7 +85,7 @@ class WebPushService
                 $digits = preg_replace('/\D+/', '', $vano);
                 if ($digits && strlen($digits) > 6) {
                     $q->orWhere('vano', $digits)
-                        ->orWhere('nocust', ltrim(preg_replace('/^(751000|757777|797766)/', '', $digits), '0'));
+                        ->orWhere('nocust', ltrim(preg_replace('/^(?:'.preg_quote((string) config('services.va.prefix', '751000'), '/').'|751000|757777|797766)/', '', $digits), '0'));
                 }
                 $has = true;
             }

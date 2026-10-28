@@ -70,20 +70,68 @@ class Tagihan
         $billamStore = implode(',', $amounts);
         $expDate = $this->earliestExpDate($ids);
 
-        $inserted = $this->doInsertVa($custid, $nocust, $namacust, $nocust, $tagihanAA, $billamStore, $billtot, $expDate);
+        $nova = null;
+        $inserted = false;
+        for ($try = 0; $try < 3; $try++) {
+            $nova = $this->nextScctvaNova();
+            if ($nova === null) {
+                break;
+            }
+            $inserted = $this->doInsertVa($custid, $nocust, $namacust, $nova, $tagihanAA, $billamStore, $billtot, $expDate);
+            if ($inserted) {
+                break;
+            }
+        }
+
         if ($inserted) {
             $this->logVa('insertVA ok', [
-                'nova' => $nocust,
+                'nova' => $nova,
                 'arrayTagihan' => $tagihanAA,
                 'billam' => $billamStore,
                 'billtot' => $billtot,
                 'expDate' => $expDate,
             ]);
-            return $nocust;
+            return $nova;
         }
 
-        $this->logVa('insertVA failed, NOVA harus sama dengan NOCUST', ['nocust' => $nocust]);
+        $this->logVa('insertVA failed', ['nocust' => $nocust, 'nova' => $nova]);
         return false;
+    }
+
+    /**
+     * NOVA scctva: 8 + 1 digit tahun + bulan 2 digit + tanggal 2 digit + urut 4 digit.
+     * 2026-10-13 urutan pertama = 8610130001. Urutan direset tiap hari.
+     */
+    private function nextScctvaNova()
+    {
+        $now = new DateTime('now', new DateTimeZone('Asia/Jakarta'));
+        $stem = '8' . substr($now->format('Y'), -1) . $now->format('md');
+        $seq = 1;
+
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT NOVA FROM scctva
+                 WHERE CAST(NOVA AS CHAR) LIKE :prefix
+                   AND CHAR_LENGTH(CAST(NOVA AS CHAR)) = 10
+                 ORDER BY CAST(NOVA AS CHAR) DESC
+                 LIMIT 1"
+            );
+            $stmt->execute([':prefix' => $stem . '%']);
+            $last = (string) ($stmt->fetchColumn() ?: '');
+            if (preg_match('/^' . preg_quote($stem, '/') . '(\d{4})$/', $last, $m)) {
+                $seq = ((int) $m[1]) + 1;
+            }
+        } catch (Exception $e) {
+            $this->logVa('nextScctvaNova failed', ['error' => $e->getMessage(), 'stem' => $stem]);
+            return null;
+        }
+
+        if ($seq > 9999) {
+            $this->logVa('nextScctvaNova overflow', ['stem' => $stem]);
+            return null;
+        }
+
+        return $stem . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 
     private function resolveBillam(array $ids, $billam)

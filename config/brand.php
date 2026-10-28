@@ -1,5 +1,43 @@
 <?php
 
+if (!function_exists('brand_color')) {
+    function brand_color(string $key, string $fallback): string
+    {
+        $value = env($key);
+        if (!is_string($value)) {
+            return $fallback;
+        }
+        $value = trim($value, " \t\n\r\0\x0B\"'");
+        if (!preg_match('/^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/', $value, $m)) {
+            return $fallback;
+        }
+        $hex = $m[1];
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+
+        return '#'.strtoupper($hex);
+    }
+
+    function brand_hex_mix(string $hex, string $with, float $amount): string
+    {
+        $parse = static function (string $color): array {
+            $color = ltrim($color, '#');
+            if (strlen($color) === 3) {
+                $color = $color[0].$color[0].$color[1].$color[1].$color[2].$color[2];
+            }
+
+            return [hexdec(substr($color, 0, 2)), hexdec(substr($color, 2, 2)), hexdec(substr($color, 4, 2))];
+        };
+        $a = $parse($hex);
+        $b = $parse($with);
+        $t = max(0.0, min(1.0, $amount));
+        $mix = static fn (int $from, int $to): int => (int) round($from + ($to - $from) * $t);
+
+        return sprintf('#%02X%02X%02X', $mix($a[0], $b[0]), $mix($a[1], $b[1]), $mix($a[2], $b[2]));
+    }
+}
+
 /**
  * Brand / white-label settings for this master tagihan project.
  *
@@ -70,28 +108,56 @@ return [
     |--------------------------------------------------------------------------
     | Warna (hex). Dipakai sebagai CSS variables + PWA theme-color
     |--------------------------------------------------------------------------
-    | Primary = biru ICT yang lebih dalam (kontras baik di UI)
-    | Highlight = kuning titik "i" logo
-    | Soft cyan logo (#3AB4F2) dipakai sebagai aksen dekoratif di CSS
+    | Primary / highlight mengikuti logo. Kalau BRAND_COLOR_DARK_* tidak diisi,
+    | mode gelap diturunkan dari primary supaya tidak tertinggal biru bawaan.
     */
-    'colors' => [
-        'primary' => env('BRAND_COLOR_PRIMARY', '#0B7EB8'),
-        'primary_hover' => env('BRAND_COLOR_PRIMARY_HOVER', '#086693'),
-        'primary_soft' => env('BRAND_COLOR_PRIMARY_SOFT', '#D6EEF8'),
-        'theme' => env('BRAND_COLOR_THEME', '#0B7EB8'),
-        'highlight' => env('BRAND_COLOR_HIGHLIGHT', '#E89B0C'),
-        'highlight_soft' => env('BRAND_COLOR_HIGHLIGHT_SOFT', '#FFF3D1'),
-        'bg' => env('BRAND_COLOR_BG', '#e4e9ee'),
-        'surface' => env('BRAND_COLOR_SURFACE', '#ffffff'),
-        'text' => env('BRAND_COLOR_TEXT', '#0a1f2e'),
-        // Dark mode
-        'dark_bg' => env('BRAND_COLOR_DARK_BG', '#0a1218'),
-        'dark_surface' => env('BRAND_COLOR_DARK_SURFACE', '#15202a'),
-        'dark_primary' => env('BRAND_COLOR_DARK_PRIMARY', '#4DB8E8'),
-        'dark_primary_hover' => env('BRAND_COLOR_DARK_PRIMARY_HOVER', '#3AB4F2'),
-        'dark_primary_soft' => env('BRAND_COLOR_DARK_PRIMARY_SOFT', '#163548'),
-        'dark_text' => env('BRAND_COLOR_DARK_TEXT', '#e8f1f6'),
-    ],
+    'colors' => (static function () {
+        $primary = brand_color('BRAND_COLOR_PRIMARY', '#0B7EB8');
+        $primaryHover = brand_color('BRAND_COLOR_PRIMARY_HOVER', brand_hex_mix($primary, '#000000', 0.18));
+        $primarySoft = brand_color('BRAND_COLOR_PRIMARY_SOFT', brand_hex_mix('#FFFFFF', $primary, 0.14));
+        $highlight = brand_color('BRAND_COLOR_HIGHLIGHT', '#E89B0C');
+        $highlightSoft = brand_color('BRAND_COLOR_HIGHLIGHT_SOFT', brand_hex_mix('#FFFFFF', $highlight, 0.18));
+        $bg = brand_color('BRAND_COLOR_BG', brand_hex_mix('#E8EDF2', $primary, 0.06));
+        $darkBg = brand_color('BRAND_COLOR_DARK_BG', brand_hex_mix('#0C0E14', $primary, 0.22));
+
+        return [
+            'primary' => $primary,
+            'primary_hover' => $primaryHover,
+            'primary_soft' => $primarySoft,
+            'theme' => brand_color('BRAND_COLOR_THEME', $primary),
+            'highlight' => $highlight,
+            'highlight_soft' => $highlightSoft,
+            'bg' => $bg,
+            'bg_deep' => brand_color('BRAND_COLOR_BG_DEEP', brand_hex_mix($bg, $primary, 0.1)),
+            'surface' => brand_color('BRAND_COLOR_SURFACE', '#FFFFFF'),
+            'surface2' => brand_color('BRAND_COLOR_SURFACE2', brand_hex_mix('#F4F7FA', $primary, 0.06)),
+            'border' => brand_color('BRAND_COLOR_BORDER', brand_hex_mix('#C5D0DA', $primary, 0.16)),
+            'border2' => brand_color('BRAND_COLOR_BORDER2', brand_hex_mix('#8FA3B5', $primary, 0.22)),
+            'text' => brand_color('BRAND_COLOR_TEXT', '#0A1F2E'),
+            'text2' => brand_color('BRAND_COLOR_TEXT2', brand_hex_mix('#334B5C', $primary, 0.2)),
+            'text3' => brand_color('BRAND_COLOR_TEXT3', brand_hex_mix('#5A7386', $primary, 0.16)),
+            'table_head' => brand_color('BRAND_COLOR_TABLE_HEAD', $primary),
+            'table_head_text' => brand_color('BRAND_COLOR_TABLE_HEAD_TEXT', '#FFFFFF'),
+            'on_accent' => brand_color('BRAND_COLOR_ON_PRIMARY', '#FFFFFF'),
+            'dark_bg' => $darkBg,
+            'dark_bg_deep' => brand_color('BRAND_COLOR_DARK_BG_DEEP', brand_hex_mix('#07080C', $primary, 0.28)),
+            'dark_surface' => brand_color('BRAND_COLOR_DARK_SURFACE', brand_hex_mix($darkBg, $primary, 0.28)),
+            'dark_surface2' => brand_color('BRAND_COLOR_DARK_SURFACE2', brand_hex_mix($darkBg, $primary, 0.4)),
+            'dark_border' => brand_color('BRAND_COLOR_DARK_BORDER', brand_hex_mix($darkBg, $primary, 0.48)),
+            'dark_border2' => brand_color('BRAND_COLOR_DARK_BORDER2', brand_hex_mix($darkBg, $primary, 0.62)),
+            'dark_text' => brand_color('BRAND_COLOR_DARK_TEXT', '#F3F6FA'),
+            'dark_text2' => brand_color('BRAND_COLOR_DARK_TEXT2', brand_hex_mix('#D5DEE8', $primary, 0.18)),
+            'dark_text3' => brand_color('BRAND_COLOR_DARK_TEXT3', brand_hex_mix('#A8B6C4', $primary, 0.16)),
+            'dark_primary' => brand_color('BRAND_COLOR_DARK_PRIMARY', brand_hex_mix($primary, '#FFFFFF', 0.42)),
+            'dark_primary_hover' => brand_color('BRAND_COLOR_DARK_PRIMARY_HOVER', brand_hex_mix($primary, '#FFFFFF', 0.55)),
+            'dark_primary_soft' => brand_color('BRAND_COLOR_DARK_PRIMARY_SOFT', brand_hex_mix($darkBg, $primary, 0.55)),
+            'dark_highlight' => brand_color('BRAND_COLOR_DARK_HIGHLIGHT', brand_hex_mix($highlight, '#FFFFFF', 0.12)),
+            'dark_highlight_soft' => brand_color('BRAND_COLOR_DARK_HIGHLIGHT_SOFT', brand_hex_mix($darkBg, $highlight, 0.35)),
+            'dark_table_head' => brand_color('BRAND_COLOR_DARK_TABLE_HEAD', brand_hex_mix($darkBg, $primary, 0.72)),
+            'dark_table_head_text' => brand_color('BRAND_COLOR_DARK_TABLE_HEAD_TEXT', '#FFFFFF'),
+            'dark_on_accent' => brand_color('BRAND_COLOR_DARK_ON_PRIMARY', '#141018'),
+        ];
+    })(),
 
     /*
     |--------------------------------------------------------------------------

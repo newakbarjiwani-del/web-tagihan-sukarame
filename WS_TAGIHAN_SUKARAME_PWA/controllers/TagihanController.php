@@ -77,6 +77,11 @@ public function cek2()
     $model = new Tagihan();
     $va_number = $model->insertVA($custid, $nocust, $namacust, $arrayTagihan, $billam);
 
+    if ($va_number === false || $va_number === null || $va_number === '') {
+        jsonResponse(false, "Gagal membuat nomor VA");
+        return;
+    }
+
     jsonResponse(true, "Nomor Virtual Account berhasil dibuat", ['va_number' => $va_number]);
 }
 
