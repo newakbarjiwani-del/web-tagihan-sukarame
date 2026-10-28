@@ -59,7 +59,7 @@ return [
     |
     */
 
-    'files' => storage_path('framework/sessions'),
+    'files' => \App\Support\RuntimePath::writable(storage_path('framework/sessions'), 'sessions'),
 
     /*
     |--------------------------------------------------------------------------

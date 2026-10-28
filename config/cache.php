@@ -51,8 +51,8 @@ return [
 
         'file' => [
             'driver' => 'file',
-            'path' => storage_path('framework/cache/data'),
-            'lock_path' => storage_path('framework/cache/data'),
+            'path' => \App\Support\RuntimePath::writable(storage_path('framework/cache/data'), 'cache'),
+            'lock_path' => \App\Support\RuntimePath::writable(storage_path('framework/cache/data'), 'cache'),
         ],
 
         'memcached' => [

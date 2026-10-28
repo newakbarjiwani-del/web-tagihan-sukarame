@@ -54,7 +54,7 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single'],
+            'channels' => [\App\Support\RuntimePath::logChannel()],
             'ignore_exceptions' => false,
         ],
 
@@ -124,7 +124,7 @@ return [
         ],
 
         'emergency' => [
-            'path' => storage_path('logs/laravel.log'),
+            'path' => \App\Support\RuntimePath::emergencyLog(),
         ],
     ],
 
