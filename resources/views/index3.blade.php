@@ -233,16 +233,6 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
             <p class="section-lead">Akun yang sedang aktif.</p>
           </div>
           <div class="tbl-controls action-group">
-            <form method="POST" action="{{ route('tagihan.filter-tahun') }}" class="tahun-filter">
-              @csrf
-              <label class="ctrl-label" for="filterTahunAkademik">Tahun</label>
-              <select name="academic_year" id="filterTahunAkademik" onchange="this.form.submit()" aria-label="Filter tahun akademik">
-                <option value="all" {{ ($academic_year ?? 'all') === 'all' ? 'selected' : '' }}>Semua</option>
-                @foreach(($tahun_akademik_list ?? []) as $th)
-                  <option value="{{ $th }}" {{ (string) ($academic_year ?? '') === (string) $th ? 'selected' : '' }}>{{ $th }}</option>
-                @endforeach
-              </select>
-            </form>
             <button type="button" class="ui-btn ui-btn-secondary ui-btn-sm" id="btnGantiPassword" onclick="openGantiPasswordModal()">Ganti password</button>
             <button type="button" class="ui-btn ui-btn-secondary ui-btn-sm" id="btnMultiAkun" onclick="openMultiAkunModal()">Multi akun</button>
             <button type="button" class="ui-btn ui-btn-danger-outline ui-btn-sm" id="btnLogout" onclick="logoutAkun()">Keluar</button>
@@ -350,6 +340,16 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
             <p class="section-lead">{{ ($academic_year ?? 'all') === 'all' ? 'Semua tahun akademik' : $academic_year }} · {{ $canPayBills ? 'pilih tagihan lalu bayar' : 'informasi tagihan' }}</p>
           </div>
           <div class="tbl-controls">
+            <form method="POST" action="{{ route('tagihan.filter-tahun') }}" class="tahun-filter">
+              @csrf
+              <label class="ctrl-label" for="filterTahunAkademik">Tahun</label>
+              <select name="academic_year" id="filterTahunAkademik" onchange="this.form.submit()" aria-label="Filter tahun akademik">
+                <option value="all" {{ ($academic_year ?? 'all') === 'all' ? 'selected' : '' }}>Semua</option>
+                @foreach(($tahun_akademik_list ?? []) as $th)
+                  <option value="{{ $th }}" {{ (string) ($academic_year ?? '') === (string) $th ? 'selected' : '' }}>{{ $th }}</option>
+                @endforeach
+              </select>
+            </form>
             <label class="ctrl-label" for="tagihanPerPage">Tampil</label>
             <select id="tagihanPerPage" onchange="changeTagihanPerPage()" aria-label="Jumlah data">
               <option value="10">10</option>
