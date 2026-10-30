@@ -76,6 +76,10 @@ class MultiAccountController extends Controller
         ])->with([
             'va' => $va,
             'academic_year' => $academicYear,
+            'tahun_akademik_list' => app(TagihanController::class)->tahunAkademikList(
+                $result['data']['id'] ?? null,
+                $result['data'] ?? null
+            ),
         ]);
     }
 

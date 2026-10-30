@@ -11,6 +11,7 @@ if (!extension_loaded('gd')) {
 }
 
 $srcCandidates = [
+    dirname(__DIR__) . '/ictkui.jpeg',
     dirname(__DIR__) . '/logo.jpeg',
     dirname(__DIR__) . '/icon-jannah.jpeg',
 ];
@@ -40,7 +41,7 @@ if (!$img) {
     exit(1);
 }
 
-foreach ([192, 512] as $size) {
+foreach ([32, 192, 512] as $size) {
     $out = imagecreatetruecolor($size, $size);
     imagealphablending($out, false);
     imagesavealpha($out, true);
@@ -58,7 +59,7 @@ foreach ([192, 512] as $size) {
     $dy = (int) (($size - $dh) / 2);
     imagecopyresampled($out, $img, $dx, $dy, 0, 0, $dw, $dh, $w, $h);
 
-    $path = $dir . "/icon-{$size}.png";
+    $path = $size === 32 ? $dir . '/favicon.png' : $dir . "/icon-{$size}.png";
     imagepng($out, $path);
     imagedestroy($out);
     echo "OK {$size} => {$path}\n";

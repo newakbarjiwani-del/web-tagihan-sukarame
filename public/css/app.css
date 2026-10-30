@@ -690,6 +690,10 @@ html.dark .ui-btn-danger-outline:hover{background:#ef5350;border-color:#ef5350;c
   background:var(--highlight,#E89B0C);
 }
 .tbl-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tahun-filter{
+  display:inline-flex;align-items:center;gap:6px;margin:0;
+}
+.tahun-filter select{min-width:7.5rem}
 .tbl-controls select{
   min-height:34px;padding:5px 28px 5px 10px;border-radius:var(--radius);
   border:1.5px solid var(--border2);background:#fff;color:var(--text);
@@ -1009,8 +1013,12 @@ html.dark .btn-copy-mini{background:var(--accent);border-color:var(--accent);col
 .pay-total{
   display:flex;justify-content:space-between;align-items:center;
   padding:10px 12px;border-radius:var(--radius);background:var(--accent-soft);
-  margin-bottom:.85rem;font-size:14px;font-weight:700;
+  margin-bottom:.35rem;font-size:14px;font-weight:700;
 }
+.pay-admin{
+  margin:0 0 .85rem;font-size:12px;font-weight:600;color:var(--text2);text-align:right;
+}
+.va-box .pay-admin{text-align:center;margin:-.15rem 0 .35rem}
 .pay-actions{display:flex;gap:8px}
 .pay-method{
   margin:.75rem 0 .35rem;padding:10px 12px;border:1px solid var(--border2);

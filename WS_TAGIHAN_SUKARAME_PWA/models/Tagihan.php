@@ -12,13 +12,20 @@ class Tagihan
         $this->db = $database->getConnection();
     }
 
-    public function getAllTahunAkademik()
+    public function getAllTahunAkademik($custid = null)
     {
-        $sql = "SELECT urut, thn_aka 
-            FROM mst_thn_aka 
-            ORDER BY urut DESC";
+        $sql = "SELECT DISTINCT BTA AS thn_aka
+            FROM scctbill
+            WHERE BTA IS NOT NULL
+              AND TRIM(CAST(BTA AS CHAR)) <> ''";
+        $params = [];
+        if ($custid !== null && $custid !== '') {
+            $sql .= " AND CUSTID = :custid";
+            $params[':custid'] = $custid;
+        }
+        $sql .= " ORDER BY BTA DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -84,6 +91,7 @@ class Tagihan
         }
 
         if ($inserted) {
+            $this->deactivateOtherNova($custid, $nova);
             $this->logVa('insertVA ok', [
                 'nova' => $nova,
                 'arrayTagihan' => $tagihanAA,
@@ -132,6 +140,30 @@ class Tagihan
         }
 
         return $stem . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    /** Satu CUSTID hanya boleh punya satu NOVA berstatus aktif. */
+    private function deactivateOtherNova($custid, $keepNova)
+    {
+        try {
+            $stmt = $this->db->prepare(
+                'UPDATE scctva
+                 SET STATUS = 0
+                 WHERE CUSTID = :custid
+                   AND STATUS = 1
+                   AND CAST(NOVA AS CHAR) <> :nova'
+            );
+            $stmt->execute([
+                ':custid' => $custid,
+                ':nova' => (string) $keepNova,
+            ]);
+        } catch (Exception $e) {
+            $this->logVa('deactivateOtherNova failed', [
+                'error' => $e->getMessage(),
+                'custid' => $custid,
+                'nova' => $keepNova,
+            ]);
+        }
     }
 
     private function resolveBillam(array $ids, $billam)
@@ -312,6 +344,41 @@ class Tagihan
         }
 
         return $this->attachTagihan($siswa, $va_number, $tahun_akademik);
+    }
+
+    public function gantiPassword($userlogin, $passwordLama, $passwordBaru)
+    {
+        $userlogin = ltrim($this->stripVa((string) $userlogin), '0');
+        $passwordLama = (string) $passwordLama;
+        $passwordBaru = (string) $passwordBaru;
+
+        if ($userlogin === '') {
+            return ['ok' => false, 'message' => 'Userlogin tidak valid'];
+        }
+        if (strlen($passwordBaru) < 4) {
+            return ['ok' => false, 'message' => 'Password baru minimal 4 karakter'];
+        }
+        if ($passwordBaru === $passwordLama) {
+            return ['ok' => false, 'message' => 'Password baru harus berbeda dari password lama'];
+        }
+
+        $stmt = $this->db->prepare('SELECT userlogin, kunci FROM sm_user WHERE userlogin = :userlogin LIMIT 1');
+        $stmt->execute([':userlogin' => $userlogin]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user || ($user['kunci'] ?? '') !== sha1($passwordLama)) {
+            return ['ok' => false, 'message' => 'Password lama tidak sesuai'];
+        }
+
+        $upd = $this->db->prepare('UPDATE sm_user SET kunci = :kunci WHERE userlogin = :userlogin');
+        $ok = $upd->execute([
+            ':kunci' => sha1($passwordBaru),
+            ':userlogin' => $user['userlogin'],
+        ]);
+        if (!$ok) {
+            return ['ok' => false, 'message' => 'Gagal menyimpan password'];
+        }
+
+        return ['ok' => true, 'message' => 'Password berhasil diganti'];
     }
 
     private function stripVa($va_number)

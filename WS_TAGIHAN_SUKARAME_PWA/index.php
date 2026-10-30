@@ -23,6 +23,11 @@ switch ($path) {
         $controller->cek2();
         break;
 
+    case 'ganti-password':
+        $controller = new TagihanController();
+        $controller->gantiPassword();
+        break;
+
     case 'generate-va':
         $controller = new TagihanController();
         $controller->generateVA();

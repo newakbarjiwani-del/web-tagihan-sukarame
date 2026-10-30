@@ -69,6 +69,8 @@ Route::get('/csrf-token', function () {
 Route::get('/', [TagihanController::class, 'home'])->name('home');
 
 Route::post('/logout', [TagihanController::class, 'logout'])->name('logout');
+Route::post('/filter-tahun', [TagihanController::class, 'filterTahun'])->name('tagihan.filter-tahun');
+Route::post('/ganti-password', [TagihanController::class, 'gantiPassword'])->name('ganti-password');
 
 Route::get('/dua', function () {
     return view('index');

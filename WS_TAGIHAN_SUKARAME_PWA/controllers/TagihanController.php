@@ -61,6 +61,22 @@ public function cek2()
     }
 }
 
+    public function gantiPassword()
+    {
+        $input = $this->readJsonInput();
+        $userlogin = $input['userlogin'] ?? $input['va'] ?? $input['nocust'] ?? null;
+        $lama = $input['password_lama'] ?? null;
+        $baru = $input['password_baru'] ?? null;
+
+        if ($userlogin === null || $userlogin === '' || $lama === null || $lama === '' || $baru === null || $baru === '') {
+            jsonResponse(false, 'Password lama dan password baru wajib diisi');
+            return;
+        }
+
+        $result = $this->tagihan->gantiPassword($userlogin, $lama, $baru);
+        jsonResponse(!empty($result['ok']), $result['message'] ?? 'Gagal mengganti password');
+    }
+
     public function generateVA() {
     $input = json_decode(file_get_contents("php://input"), true);
     $custid = $input['custid'] ?? null;
@@ -236,7 +252,8 @@ public function cek2()
 public function getTahunAkademik() {
         header('Content-Type: application/json');
         try {
-            $data = $this->tagihan->getAllTahunAkademik();
+            $custid = $_GET['custid'] ?? null;
+            $data = $this->tagihan->getAllTahunAkademik($custid);
             echo json_encode([
                 'status' => true,
                 'data' => $data

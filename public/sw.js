@@ -1,5 +1,5 @@
 /* Tagihan PWA service worker — jangan cache HTML (CSRF / sesi) */
-const CACHE_VERSION = 'tagihan-pwa-v11';
+const CACHE_VERSION = 'tagihan-pwa-v12';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const OFFLINE_URL = '/offline.html';
 

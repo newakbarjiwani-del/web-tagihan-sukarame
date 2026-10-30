@@ -115,6 +115,7 @@ class TagihanController extends Controller
                         'multiAccounts' => $multiAccounts,
                         'va' => $vaDisplay,
                         'academic_year' => $academicYear,
+                        'tahun_akademik_list' => $this->tahunAkademikList($result['data']['id'] ?? null, $result['data']),
                     ])
                     ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
                     ->header('Pragma', 'no-cache');
@@ -218,6 +219,57 @@ class TagihanController extends Controller
         return $this->renderIndex3AfterLogin($result, self::normalizeVa($request->no_cust), $academicYear);
     }
 
+    public function gantiPassword(Request $request)
+    {
+        $noCust = self::normalizeVa(session('tagihan.active_no_cust') ?? '');
+        if ($noCust === '') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Sesi habis. Silakan masuk lagi.',
+            ], 401);
+        }
+
+        $request->validate([
+            'password_lama' => 'required|string',
+            'password_baru' => 'required|string|min:4|max:50|confirmed',
+        ], [
+            'password_baru.min' => 'Password baru minimal 4 karakter.',
+            'password_baru.confirmed' => 'Ulangi password baru tidak sama.',
+        ]);
+
+        try {
+            $response = Http::timeout(30)
+                ->withoutVerifying()
+                ->acceptJson()
+                ->asJson()
+                ->post($this->wsUrl('ganti-password'), [
+                    'userlogin' => $noCust,
+                    'password_lama' => $request->password_lama,
+                    'password_baru' => $request->password_baru,
+                ]);
+
+            $result = $response->json();
+            if (!is_array($result)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Gagal mengganti password',
+                ], 500);
+            }
+
+            return response()->json([
+                'status' => !empty($result['status']),
+                'message' => $result['message'] ?? 'Gagal mengganti password',
+            ], !empty($result['status']) ? 200 : 422);
+        } catch (\Exception $e) {
+            Log::error('Error ganti-password', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat mengganti password',
+            ], 500);
+        }
+    }
+
     public function loginByToken(string $token)
     {
         $token = strtolower(trim($token));
@@ -285,8 +337,92 @@ class TagihanController extends Controller
         return view('index3', compact('result', 'multiAccounts'))
             ->with([
                 'va' => self::normalizeVa($vaDisplay),
-                'academic_year' => $academicYear
+                'academic_year' => $academicYear,
+                'tahun_akademik_list' => $this->tahunAkademikList($result['data']['id'] ?? null, $result['data']),
             ]);
+    }
+
+    public function filterTahun(Request $request)
+    {
+        $sess = session('tagihan');
+        if (!is_array($sess) || self::normalizeVa($sess['active_no_cust'] ?? '') === '') {
+            return redirect()->route('home');
+        }
+
+        $year = trim((string) $request->input('academic_year', 'all'));
+        if ($year === '' || strcasecmp($year, 'all') === 0) {
+            $year = 'all';
+        } elseif (!preg_match('/^[A-Za-z0-9\-\/ ]{1,30}$/', $year)) {
+            return redirect()->route('home');
+        }
+
+        $sess['academic_year'] = $year;
+        session(['tagihan' => $sess]);
+
+        return redirect()->route('home');
+    }
+
+    public function tahunAkademikList($custid, ?array $data = null): array
+    {
+        $years = [];
+
+        try {
+            $url = $this->wsUrl('list-tahun-aka');
+            if ($custid !== null && $custid !== '') {
+                $url .= '&custid='.rawurlencode((string) $custid);
+            }
+
+            $response = Http::timeout(20)
+                ->withoutVerifying()
+                ->acceptJson()
+                ->get($url);
+
+            $rows = $response->json('data');
+            if (is_array($rows)) {
+                foreach ($rows as $row) {
+                    $value = trim((string) (is_array($row) ? ($row['thn_aka'] ?? $row['BTA'] ?? '') : $row));
+                    if ($value !== '') {
+                        $years[$value] = $value;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('list tahun akademik gagal', ['error' => $e->getMessage()]);
+        }
+
+        foreach (['tagihan', 'tagihan_lunas'] as $key) {
+            foreach (($data[$key] ?? []) as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $value = trim((string) ($item['tahun_akademik_tagihan'] ?? ''));
+                if ($value !== '') {
+                    $years[$value] = $value;
+                }
+            }
+        }
+
+        $sess = session('tagihan');
+        $sameStudent = is_array($sess) && (string) ($sess['tahun_akademik_custid'] ?? '') === (string) $custid;
+        if ($sameStudent && is_array($sess['tahun_akademik_opsi'] ?? null)) {
+            foreach ($sess['tahun_akademik_opsi'] as $value) {
+                $value = trim((string) $value);
+                if ($value !== '') {
+                    $years[$value] = $value;
+                }
+            }
+        }
+
+        $list = array_values($years);
+        rsort($list, SORT_NATURAL);
+
+        if (is_array($sess)) {
+            $sess['tahun_akademik_opsi'] = $list;
+            $sess['tahun_akademik_custid'] = (string) $custid;
+            session(['tagihan' => $sess]);
+        }
+
+        return $list;
     }
 
     private function withNova($result, ?string $fallback = null): array

@@ -31,8 +31,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="{{ $brand['short_name'] }}">
 <link rel="manifest" href="{{ url('/manifest.webmanifest') }}">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ asset($brand['favicon']) }}">
 <link rel="icon" type="image/png" sizes="192x192" href="{{ asset($brand['icon_192']) }}">
-<link rel="icon" href="{{ asset($brand['favicon']) }}">
 <link rel="apple-touch-icon" href="{{ asset($brand['icon_192']) }}">
 @if(!empty($brand['font_url']))
 <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>

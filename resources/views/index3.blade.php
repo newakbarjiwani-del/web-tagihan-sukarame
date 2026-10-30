@@ -233,6 +233,17 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
             <p class="section-lead">Akun yang sedang aktif.</p>
           </div>
           <div class="tbl-controls action-group">
+            <form method="POST" action="{{ route('tagihan.filter-tahun') }}" class="tahun-filter">
+              @csrf
+              <label class="ctrl-label" for="filterTahunAkademik">Tahun</label>
+              <select name="academic_year" id="filterTahunAkademik" onchange="this.form.submit()" aria-label="Filter tahun akademik">
+                <option value="all" {{ ($academic_year ?? 'all') === 'all' ? 'selected' : '' }}>Semua</option>
+                @foreach(($tahun_akademik_list ?? []) as $th)
+                  <option value="{{ $th }}" {{ (string) ($academic_year ?? '') === (string) $th ? 'selected' : '' }}>{{ $th }}</option>
+                @endforeach
+              </select>
+            </form>
+            <button type="button" class="ui-btn ui-btn-secondary ui-btn-sm" id="btnGantiPassword" onclick="openGantiPasswordModal()">Ganti password</button>
             <button type="button" class="ui-btn ui-btn-secondary ui-btn-sm" id="btnMultiAkun" onclick="openMultiAkunModal()">Multi akun</button>
             <button type="button" class="ui-btn ui-btn-danger-outline ui-btn-sm" id="btnLogout" onclick="logoutAkun()">Keluar</button>
           </div>
@@ -464,7 +475,7 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
 
         @if($canPayBills && $hasTagihanAktif)
         <div class="pay-dock">
-          <p class="pay-note">Centang tagihan yang ingin dibayar. Tagihan non-cicil harus dilunasi sisa; cicilan tidak boleh melebihi sisa.</p>
+          <p class="pay-note">Centang tagihan yang ingin dibayar. Tagihan non-cicil harus dilunasi. sisa; cicilan tidak boleh melebihi sisa.</p>
           <div class="pay-summary" id="paySummary">
             <span id="paySummaryText">0 tagihan dipilih</span>
             <b id="paySummaryTotal">Rp 0</b>
@@ -666,6 +677,37 @@ function notifyOk(title, text) { notifyTitle(title, text, 'success'); }
     ]]);
   }
 @endphp
+<div id="gantiPasswordModal" class="modal-bg" role="dialog" aria-modal="true" aria-labelledby="gantiPasswordTitle">
+  <div class="modal-box modal-sm">
+    <div class="modal-head">
+      <h3 id="gantiPasswordTitle">Ganti password</h3>
+      <button class="modal-x" onclick="closeGantiPasswordModal()" aria-label="Tutup" type="button">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="gantiPasswordForm" onsubmit="return submitGantiPassword(event)">
+      <div class="modal-body">
+        <p class="section-lead" style="margin-top:0">Password dipakai untuk masuk dengan userlogin ini.</p>
+        <div class="field">
+          <label for="pwLama">Password lama <em>*</em></label>
+          <input type="password" id="pwLama" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+          <label for="pwBaru">Password baru <em>*</em></label>
+          <input type="password" id="pwBaru" autocomplete="new-password" minlength="4" maxlength="50" required>
+        </div>
+        <div class="field">
+          <label for="pwBaruUlang">Ulangi password baru <em>*</em></label>
+          <input type="password" id="pwBaruUlang" autocomplete="new-password" minlength="4" maxlength="50" required>
+        </div>
+      </div>
+      <div class="modal-foot" style="display:flex;gap:8px">
+        <button class="btn-ghost" type="button" onclick="closeGantiPasswordModal()">Batal</button>
+        <button class="btn-pay-confirm" type="submit" id="btnSimpanPassword">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
 <div id="multiAkunModal" class="modal-bg">
   <div class="modal-box modal-sm">
     <div class="modal-head">
@@ -1535,6 +1577,70 @@ function renderMultiAkunList(accounts) {
   }).join('');
 }
 
+function openGantiPasswordModal() {
+  const modal = document.getElementById('gantiPasswordModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('pwLama')?.focus();
+}
+
+function closeGantiPasswordModal() {
+  const modal = document.getElementById('gantiPasswordModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+  const form = document.getElementById('gantiPasswordForm');
+  if (form) form.reset();
+}
+
+async function submitGantiPassword(event) {
+  event.preventDefault();
+  const lama = document.getElementById('pwLama')?.value || '';
+  const baru = document.getElementById('pwBaru')?.value || '';
+  const ulang = document.getElementById('pwBaruUlang')?.value || '';
+  const btn = document.getElementById('btnSimpanPassword');
+
+  if (baru.length < 4) {
+    notifyWarn('Password belum valid', 'Password baru minimal 4 karakter.');
+    return false;
+  }
+  if (baru !== ulang) {
+    notifyWarn('Tidak sama', 'Ulangi password baru harus sama.');
+    return false;
+  }
+  if (baru === lama) {
+    notifyWarn('Password sama', 'Password baru harus berbeda dari password lama.');
+    return false;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+  try {
+    const res = await apiFetch(@json(route('ganti-password')), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        password_lama: lama,
+        password_baru: baru,
+        password_baru_confirmation: ulang
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.status) {
+      const msg = data.message || (data.errors && (data.errors.password_baru || data.errors.password_lama || [])[0]) || 'Gagal mengganti password';
+      notifyError('Gagal', msg);
+      return false;
+    }
+    closeGantiPasswordModal();
+    notifyOk('Berhasil', data.message || 'Password berhasil diganti.');
+  } catch (err) {
+    notifyError('Terjadi kesalahan', 'Gagal mengganti password. Coba beberapa saat lagi.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan'; }
+  }
+  return false;
+}
+
 function logoutAkun() {
   try { sessionStorage.clear(); } catch (e) {}
   const form = document.getElementById('logoutForm');
@@ -1680,6 +1786,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+const BIAYA_ADMIN = 2000;
 
 function formatRp(n) {
   return 'Rp\u00a0' + (parseInt(n, 10) || 0).toLocaleString('id-ID');
@@ -1916,7 +2024,8 @@ function showPaymentModal() {
         <tbody>${rows}</tbody>
       </table>
     </div>
-    <div class="pay-total"><span>Total pembayaran</span><span id="modalPayTotal">${formatRp(total)}</span></div>
+    <div class="pay-total"><span>Total pembayaran</span><span id="modalPayTotal">${formatRp(total + BIAYA_ADMIN)}</span></div>
+    <p class="pay-admin">Termasuk biaya admin ${formatRp(BIAYA_ADMIN)}</p>
     <div id="vaResult"></div>`;
 
   document.getElementById('paymentFoot').innerHTML = `
@@ -1930,7 +2039,7 @@ function showPaymentModal() {
       clampBayarInput(inp);
       const tot = getSelectedTagihan().reduce((s, i) => s + (parseInt(i.bayar, 10) || 0), 0);
       const el = document.getElementById('modalPayTotal');
-      if (el) el.textContent = formatRp(tot);
+      if (el) el.textContent = formatRp(tot + BIAYA_ADMIN);
     });
   });
 
@@ -2023,7 +2132,8 @@ async function prosesGenerateVa(payload, total, nocust, btn) {
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="1"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           Salin nomor VA
         </button>
-          <p class="va-meta">Total: <b>${formatRp(total)}</b></p>
+          <p class="va-meta">Total: <b>${formatRp(total + BIAYA_ADMIN)}</b></p>
+          <p class="pay-admin">Termasuk biaya admin ${formatRp(BIAYA_ADMIN)}</p>
         <p class="va-help">Bayar ke nomor VA di atas. Kami akan memberi notifikasi saat pembayaran berhasil.</p>
         </div>`;
     const methodBox = document.getElementById('payMethodBox');
